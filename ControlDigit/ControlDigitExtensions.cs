@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using NUnit.Framework;
 
 namespace ControlDigit
@@ -16,7 +18,6 @@ namespace ControlDigit
 				sum += factor * digit;
 				factor = 4 - factor;
 				number /= 10;
-
 			}
 			while (number > 0);
 
@@ -26,9 +27,23 @@ namespace ControlDigit
 			return result;
 		}
 
-		public static int ControlDigit2(this long number)
-		{
-			throw new NotImplementedException();
+	    private static List<int> FetchOddOrEven(this long number, Func<int, int> f)
+	    {
+            var digits = new List<int>();
+	        while (number > 0)
+	        {
+	            digits.Add(f((int)number));
+	            number /= 100;
+	        }
+	        return digits;
+	    }
+
+        public static int ControlDigit2(this long number)
+        {
+            var sum = number.FetchOddOrEven(n => n % 10).Sum() 
+                + 3 * number.FetchOddOrEven(n => n % 100 / 10).Sum();
+            var result = sum % 11;
+            return result == 10 ? 1 : result;
 		}
 	}
 
@@ -54,6 +69,13 @@ namespace ControlDigit
 			for (long i = 0; i < 100000; i++)
 				Assert.AreEqual(i.ControlDigit(), i.ControlDigit2());
 		}
+
+        [Test]
+	    public void T()
+	    {
+	        for (long i = 0; i < 150; i++)
+                Console.WriteLine(i + " " + i.ControlDigit());
+	    }
 	}
 
 	[TestFixture]
