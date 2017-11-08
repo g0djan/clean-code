@@ -45,9 +45,10 @@ namespace Chess
 		private static bool IsCheckForWhite(Board board)
 		{
 		    return (from blackLocation in board.GetPieces(PieceColor.Black)
-		               let blackPiece = board.GetPiece(blackLocation)
-		               select blackPiece.GetMoves(blackLocation, board)).Any(moves => moves
-		               .Any(destination => board.GetPiece(destination)
+		            let blackPiece = board.GetPiece(blackLocation)
+		            select blackPiece.GetMoves(blackLocation, board))
+                        .Any(moves => moves
+		                   .Any(destination => board.GetPiece(destination)
 		                                        .Is(PieceColor.White, PieceType.King)));
 		}
 	}
