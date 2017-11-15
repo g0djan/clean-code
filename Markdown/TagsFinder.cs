@@ -12,7 +12,7 @@ namespace Markdown
         {
         }
 
-        public Tag GetFirstTagOnSegment(TextTagsState state)
+        public TagSegment GetFirstTagOnSegment(TextTagsState state)
         {
             int? openedIndex, closedIndex;
             TagName? tagName;
@@ -23,7 +23,7 @@ namespace Markdown
                     return null;
                 state = state.ChangeSegment(openedIndex.Value, state.End);
                 tagName = GetTagName(state, IsOpenedTag);
-                var indexInTag = openedIndex.Value + Tag.GetMd(tagName.Value).Length;
+                var indexInTag = openedIndex.Value + Tags.GetMd(tagName.Value).Length;
                 if (indexInTag > state.End)
                     return null;
                 state = state.ChangeSegment(indexInTag, state.End);
@@ -32,12 +32,12 @@ namespace Markdown
                     continue;
                 break;
             }
-            return new Tag(tagName.Value, openedIndex.Value, closedIndex.Value);
+            return new TagSegment(tagName.Value, openedIndex.Value, closedIndex.Value);
         }
 
         private static bool IsEmptyInsideTag(int? closedIndex, int? openedIndex, TagName? tagName)
         {
-            return closedIndex.Value - openedIndex.Value < Tag.GetMd(tagName.Value).Length + 1;
+            return closedIndex.Value - openedIndex.Value < Tags.GetMd(tagName.Value).Length + 1;
         }
 
         private TagName? GetTagName(TextTagsState state, Func<TagName, TextTagsState, bool> condition)
@@ -64,7 +64,7 @@ namespace Markdown
 
         private bool IsOpenedTag(TagName tag, TextTagsState state)
         {
-            var indexInTag = state.Start + Tag.GetMd(tag).Length;
+            var indexInTag = state.Start + Tags.GetMd(tag).Length;
             return IsItLooksLikeTag(tag, state) &&
                 indexInTag - 1 < state.End && 
                 state.Text[indexInTag] != ' ' &&
@@ -92,12 +92,14 @@ namespace Markdown
 
         private bool IsItLooksLikeTag(TagName tag, TextTagsState state)
         {
-            if (state.Start + Tag.GetMd(tag).Length - 1 > state.End || IsDisabledEscape(state))
+            const int moreThanAnyTagLength = 4;
+            if (state.Start + Tags.GetMd(tag).Length - 1 > state.End || IsDisabledEscape(state))
                 return false;
-            if (state.Start + 4 <= state.End && state.Text.Substring(state.Start, 4) == "____")
+            if (state.Start + moreThanAnyTagLength <= state.End &&
+                state.Text.Substring(state.Start, moreThanAnyTagLength) == "____")
                 return false;
-            var potentialTag = state.Text.Substring(state.Start, Tag.GetMd(tag).Length);
-            return Tag.GetMd(tag) == potentialTag && 
+            var potentialTag = state.Text.Substring(state.Start, Tags.GetMd(tag).Length);
+            return Tags.GetMd(tag) == potentialTag && 
                 !state.IsInTag(TagName.Em) && 
                 !state.IsInTag(TagName.StrongEm);
         }
@@ -117,20 +119,20 @@ namespace Markdown
             tagsFinder = new TagsFinder();
         }
 
-        private void TestGetFirstTagOnSegment(string text, Tag expectedTag)
+        private void TestGetFirstTagOnSegment(string text, TagSegment expectedTagSegment)
         {
             var state = new TextTagsState(text, 0, text.Length - 1);
-            tagsFinder.GetFirstTagOnSegment(state).Should().Be(expectedTag);
+            tagsFinder.GetFirstTagOnSegment(state).Should().Be(expectedTagSegment);
         }
 
         [TestCase(TagName.Em, 0, 2)]
         [TestCase(TagName.Strong, 0, 3)]
         public void FindFirstTag_InBeginingAndOutOfTags(TagName expectedTagName, int expectedX, int expectedY)
         {
-            var md = Tag.GetMd(expectedTagName);
+            var md = Tags.GetMd(expectedTagName);
             var text = string.Format("{0}t{0}t", md);
             var state = new TextTagsState(text, 0, text.Length - 1);
-            tagsFinder.GetFirstTagOnSegment(state).Should().Be(new Tag(expectedTagName, expectedX, expectedY));
+            tagsFinder.GetFirstTagOnSegment(state).Should().Be(new TagSegment(expectedTagName, expectedX, expectedY));
         }
 
         [Test]
@@ -139,19 +141,19 @@ namespace Markdown
 
         [Test]
         public void DisabledEscapeSymbolsInTag() => 
-            TestGetFirstTagOnSegment("_\\_isnottag\\__", new Tag(TagName.Em, 0, "_\\_isnottag\\__".Length - 1));
+            TestGetFirstTagOnSegment("_\\_isnottag\\__", new TagSegment(TagName.Em, 0, "_\\_isnottag\\__".Length - 1));
 
         [Test]
         public void EmInStrong_Works()
         {
             var text = "__t_t_t__";
             var state = new TextTagsState(text, 2, text.Length - 2);
-            tagsFinder.GetFirstTagOnSegment(state).Should().Be(new Tag(TagName.Em, 3, 5));
+            tagsFinder.GetFirstTagOnSegment(state).Should().Be(new TagSegment(TagName.Em, 3, 5));
         }
 
         [Test]
         public void StrongAroundEm_Works() => 
-            TestGetFirstTagOnSegment("__t_t_t__", new Tag(TagName.Strong, 0, "__t_t_t__".Length - 2));
+            TestGetFirstTagOnSegment("__t_t_t__", new TagSegment(TagName.Strong, 0, "__t_t_t__".Length - 2));
 
         [Test]
         public void StrongInEm_DoesNotWork()
@@ -167,7 +169,7 @@ namespace Markdown
 
         [TestCase("t_t", ExpectedResult = null)]
         [TestCase("t__t", ExpectedResult = null)]
-        public Tag TagMustClosed(string text)
+        public TagSegment TagMustClosed(string text)
         {
             var state = new TextTagsState(text, 0, text.Length - 1);
             return tagsFinder.GetFirstTagOnSegment(state);
@@ -187,11 +189,11 @@ namespace Markdown
 
         [Test]
         public void TripleUnderliningIsStrongEmTag() => 
-            TestGetFirstTagOnSegment("t___t t___t", new Tag(TagName.StrongEm, 1, 7));
+            TestGetFirstTagOnSegment("t___t t___t", new TagSegment(TagName.StrongEm, 1, 7));
 
         [Test]
         public void SeveralOpenedTags() => 
-            TestGetFirstTagOnSegment("t__t_t_", new Tag(TagName.Em, 4, 6));
+            TestGetFirstTagOnSegment("t__t_t_", new TagSegment(TagName.Em, 4, 6));
 
         [Test]
         public void EmIsNotSubTagOfStrong() => 

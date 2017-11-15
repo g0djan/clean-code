@@ -8,40 +8,53 @@ namespace Markdown
 {
 	public class Md
 	{
-	    private HashSet<Tag> tags;
+	    private HashSet<TagSegment> tags;
 	    private TextTagsState state;
 	    private TagsFinder finder;
 	    private UnderliningReplacer replacer;
 
 	    public Md()
 	    {
-	        tags = new HashSet<Tag>();
+	        tags = new HashSet<TagSegment>();
             finder = new TagsFinder();
             replacer = new UnderliningReplacer();
+            Tags.InitNewTag(TagName.Em, "_", "<em>", "</em>");
+            Tags.InitNewTag(TagName.Strong, "__", "<strong>", "</strong>");
+            Tags.InitNewTag(TagName.StrongEm, "___", "<strong><em>", "</em></strong>");
         }
 
         public string RenderToHtml(string markdown)
 		{
             state = new TextTagsState(markdown, 0, markdown.Length - 1);
-		    var tags = new List<Tag>();
-            AddAllTags(state, tags);
-			return replacer.ReplaceTags(markdown, tags); //TODO
+            return replacer.ReplaceTags(markdown, GetAllTags(state).ToList()); //TODO
 		}
 
-	    private void AddAllTags(TextTagsState textState, List<Tag> tags)
+	    private IEnumerable<TagSegment> GetAllTags(TextTagsState state)
 	    {
-	        var last = finder.GetFirstTagOnSegment(textState);
-            if (last == null)
-                return;
-            tags.Add(last);
-	        var insideStart = last.OpenIndex + Tag.GetMd(last.TagName).Length;
-	        var insideEnd = last.CloseIndex - 1;
-	        var outsideStart = last.CloseIndex + Tag.GetMd(last.TagName).Length;
-            AddAllTags(textState.ChangeSegment(insideStart, insideEnd).SwitchTag(last.TagName), tags);
-            if (outsideStart <= textState.End)
-                AddAllTags(textState.ChangeSegment(outsideStart, textState.End), tags);
+            var nextStates = new Stack<TextTagsState>();
+	        for (var index = 0; index < state.Text.Length; index++)
+	        {
+	            var tag = finder.GetFirstTagOnSegment(state);
+	            if (tag == null)
+	            {
+                    if (nextStates.Count == 0)
+                        break;
+	                index = nextStates.Peek().Start - 1;
+	                state = nextStates.Pop();
+	                continue;
+	            }
+	            yield return tag;
+	            var newStart = tag.CloseIndex + Tags.GetMd(tag.TagName).Length;
+                if (newStart < state.End)
+                    nextStates.Push(state.ChangeSegment(newStart, state.End));
+	            index = tag.OpenIndex + Tags.GetMd(tag.TagName).Length;
+                if (index <= state.End - 1)
+                    state = state.SwitchTag(tag.TagName).ChangeSegment(index, tag.CloseIndex - 1);
+	            index -= 1;
+	        }
 	    }
-	}
+
+    }
 
 
     [TestFixture]

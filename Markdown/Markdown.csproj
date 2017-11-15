@@ -54,7 +54,9 @@
   <ItemGroup>
     <Compile Include="Md.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="Tag.cs" />
+    <Compile Include="StringBuilderExtensions.cs" />
+    <Compile Include="Tags.cs" />
+    <Compile Include="TagSegment.cs" />
     <Compile Include="TagName.cs" />
     <Compile Include="TagsFinder.cs" />
     <Compile Include="UnderliningReplacer.cs" />
