@@ -1,6 +1,7 @@
 ﻿using NUnit.Framework;
-using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Net.Http.Headers;
 using FluentAssertions;
 
 
@@ -8,52 +9,22 @@ namespace Markdown
 {
 	public class Md
 	{
-	    private HashSet<TagSegment> tags;
-	    private TextTagsState state;
-	    private TagsFinder finder;
-	    private UnderliningReplacer replacer;
+	    private LexemeExtractor lexemeExtractor;
+	    private SyntaxTreeNode root;
+	    private TagRenderer renederer;
 
-	    public Md()
+	    public Md(SyntaxTreeNode root, TagRenderer renederer)
 	    {
-	        tags = new HashSet<TagSegment>();
-            finder = new TagsFinder();
-            replacer = new UnderliningReplacer();
-            Tags.InitNewTag(TagName.Em, "_", "<em>", "</em>");
-            Tags.InitNewTag(TagName.Strong, "__", "<strong>", "</strong>");
-            Tags.InitNewTag(TagName.StrongEm, "___", "<strong><em>", "</em></strong>");
-        }
-
-        public string RenderToHtml(string markdown)
-		{
-            state = new TextTagsState(markdown, 0, markdown.Length - 1);
-            return replacer.ReplaceTags(markdown, GetAllTags(state).ToList()); //TODO
-		}
-
-	    private IEnumerable<TagSegment> GetAllTags(TextTagsState state)
-	    {
-            var nextStates = new Stack<TextTagsState>();
-	        for (var index = 0; index < state.Text.Length; index++)
-	        {
-	            var tag = finder.GetFirstTagOnSegment(state);
-	            if (tag == null)
-	            {
-                    if (nextStates.Count == 0)
-                        break;
-	                index = nextStates.Peek().Start - 1;
-	                state = nextStates.Pop();
-	                continue;
-	            }
-	            yield return tag;
-	            var newStart = tag.CloseIndex + Tags.GetMd(tag.TagName).Length;
-                if (newStart < state.End)
-                    nextStates.Push(state.ChangeSegment(newStart, state.End));
-	            index = tag.OpenIndex + Tags.GetMd(tag.TagName).Length;
-                if (index <= state.End - 1)
-                    state = state.SwitchTag(tag.TagName).ChangeSegment(index, tag.CloseIndex - 1);
-	            index -= 1;
-	        }
+	        this.root = root;
+	        this.renederer = renederer;
 	    }
 
+        public string RenderToHtml(string markdown)
+        {
+            var lexemes =  LexemeExtractor.GetAllLexemes(markdown);
+            root.BuildSyntaxTree(lexemes);
+            return renederer.Render(root);
+		}
     }
 
 

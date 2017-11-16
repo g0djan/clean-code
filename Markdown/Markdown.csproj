@@ -52,15 +52,15 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Lexeme.cs" />
+    <Compile Include="LexemeExtractor.cs" />
+    <Compile Include="LexemeType.cs" />
     <Compile Include="Md.cs" />
     <Compile Include="Program.cs" />
-    <Compile Include="StringBuilderExtensions.cs" />
-    <Compile Include="Tags.cs" />
-    <Compile Include="TagSegment.cs" />
-    <Compile Include="TagName.cs" />
-    <Compile Include="TagsFinder.cs" />
-    <Compile Include="UnderliningReplacer.cs" />
-    <Compile Include="TextTagsState.cs" />
+    <Compile Include="SyntaxTreeNode.cs" />
+    <Compile Include="Tag.cs" />
+    <Compile Include="TagRenderer.cs" />
+    <Compile Include="TagType.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
