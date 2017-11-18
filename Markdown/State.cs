@@ -47,7 +47,7 @@ namespace Markdown
             return new State(lexemes, start, end, newMask);
         }
 
-        public State OnSegment(int start, int end) => new State(lexemes, start, end, mask);
+        public State OnSegment(int start, int end) => new State(lexemes, start, end, new BitArray(mask));
     }
 
     [TestFixture]

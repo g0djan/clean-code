@@ -9,21 +9,18 @@ namespace Markdown
 {
 	public class Md
 	{
-	    private LexemeExtractor lexemeExtractor;
-	    private SyntaxTreeNode root;
-	    private TagRenderer renederer;
+	    private readonly SyntaxTreeNode root;
 
-	    public Md(SyntaxTreeNode root, TagRenderer renederer)
+	    public Md()
 	    {
-	        this.root = root;
-	        this.renederer = renederer;
+	        root = new SyntaxTreeNode(TagType.None);
 	    }
 
         public string RenderToHtml(string markdown)
         {
             var lexemes =  LexemeExtractor.GetAllLexemes(markdown);
-            root.BuildSyntaxTree(lexemes);
-            return renederer.Render(root);
+            root.BuildSyntaxTree(new State(lexemes, 0, lexemes.Length - 1));
+            return TagRenderer.Render(root);
 		}
     }
 
@@ -36,7 +33,7 @@ namespace Markdown
 	    [SetUp]
 	    public void SetUp()
 	    {
-	        //markdown = new Md();
+	        markdown = new Md();
 	    }
 
 	    [TestCase("_simple_", TestName = "Just Em tag", ExpectedResult = "<em>simple</em>")]
