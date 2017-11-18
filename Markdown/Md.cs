@@ -36,7 +36,7 @@ namespace Markdown
 	    [SetUp]
 	    public void SetUp()
 	    {
-	        markdown = new Md();
+	        //markdown = new Md();
 	    }
 
 	    [TestCase("_simple_", TestName = "Just Em tag", ExpectedResult = "<em>simple</em>")]

@@ -57,9 +57,11 @@
     <Compile Include="LexemeType.cs" />
     <Compile Include="Md.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="State.cs" />
     <Compile Include="SyntaxTreeNode.cs" />
     <Compile Include="Tag.cs" />
     <Compile Include="TagRenderer.cs" />
+    <Compile Include="TagExtractor.cs" />
     <Compile Include="TagType.cs" />
   </ItemGroup>
   <ItemGroup>

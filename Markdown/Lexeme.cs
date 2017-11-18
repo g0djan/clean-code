@@ -17,5 +17,23 @@ namespace Markdown
         {
             throw new NotImplementedException();
         }
+
+        public override bool Equals(object obj)
+        {
+            // STEP 1: Check for null
+            if (obj == null)
+            {
+                return false;
+            }
+
+            // STEP 3: equivalent data types
+            if (GetType() != obj.GetType())
+            {
+                return false;
+            }
+            var lexeme = (Lexeme) obj;
+            return Type.Equals(lexeme.Type) && Content.Equals(lexeme.Content);
+        }
+
     }
 }

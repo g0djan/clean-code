@@ -2,8 +2,9 @@
 {
     public enum TagType
     {
-        None,
         Italic,
-        Bold
+        Bold,
+        BoldITalic,
+        None
     }
 }
