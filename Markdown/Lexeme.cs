@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Markdown
+﻿namespace Markdown
 {
     public class Lexeme
     {
@@ -11,11 +9,6 @@ namespace Markdown
         {
             Content = content;
             Type = type;
-        }
-
-        public Lexeme Concat(Lexeme lexeme)
-        {
-            throw new NotImplementedException();
         }
 
         public override bool Equals(object obj)

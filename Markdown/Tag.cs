@@ -15,19 +15,28 @@
 
         public override bool Equals(object obj)
         {
-            // STEP 1: Check for null
             if (obj == null)
             {
                 return false;
             }
-
-            // STEP 3: equivalent data types
+            
             if (GetType() != obj.GetType())
             {
                 return false;
             }
             var tag = (Tag)obj;
             return Type.Equals(tag.Type) && Start.Equals(tag.Start) && End.Equals(tag.End);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                var hashCode = (int) Type;
+                hashCode = (hashCode * 397) ^ Start;
+                hashCode = (hashCode * 397) ^ End;
+                return hashCode;
+            }
         }
     }
 }

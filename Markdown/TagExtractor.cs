@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
@@ -16,7 +15,7 @@ namespace Markdown
                 tagType = TagType.None;
                 return false;
             }
-            tagType = (TagType) (state.GetLexeme(state.start).Content.Length - 1);
+            tagType = (TagType) (state.GetLexeme(state.Start).Content.Length - 1);
             return true;
         }
 
@@ -24,29 +23,29 @@ namespace Markdown
         {
             const int maxUnderliningLength = 3;
             const int minDistanceBtwOpenClose = 2;
-            var lexeme = state.GetLexeme(state.start);
+            var lexeme = state.GetLexeme(state.Start);
             return lexeme.Content.Length > maxUnderliningLength ||
                    lexeme.Type == LexemeType.Text ||
                    state.IsInTag(TagType.Italic) ||
                    state.IsInTag(TagType.BoldITalic) ||
-                   state.end - state.start < minDistanceBtwOpenClose ||
+                   state.End - state.Start < minDistanceBtwOpenClose ||
                    HasSpacesAfterOpenedTag(state) ||
                    HasDigitAfterOpenedTag(state);
         }
 
         private static bool HasSpacesAfterOpenedTag(State state) =>
-            state.GetLexeme(state.start + 1).Content[0] == ' ';
+            state.GetLexeme(state.Start + 1).Content[0] == ' ';
 
         private static bool HasSpacesBeforeClosedTag(Lexeme lexeme) => lexeme.Content.Last() == ' ';
 
         private static bool HasDigitAfterOpenedTag(State state) =>
-            char.IsDigit(state.GetLexeme(state.start + 1).Content[0]);
+            char.IsDigit(state.GetLexeme(state.Start + 1).Content[0]);
 
         private static bool HasDigitBeforeClosedTag(Lexeme lexeme) => char.IsDigit(lexeme.Content.Last());
 
         private static bool HasClosedTag(State state, TagType openedType, out int closedIndex)
         {
-            for (var i = state.start; i <= state.end; i++)
+            for (var i = state.Start; i <= state.End; i++)
                 if (state.GetLexeme(i).Type == LexemeType.Underlining &&
                     (TagType) (state.GetLexeme(i).Content.Length - 1) == openedType &&
                     !HasSpacesBeforeClosedTag(state.GetLexeme(i - 1)) &&
@@ -61,15 +60,15 @@ namespace Markdown
 
         private static Tag ExtractTag(State state, TagType tagType)
         {
-            return new Tag(tagType, state.start + 1, state.end - 1);
+            return new Tag(tagType, state.Start + 1, state.End - 1);
         }
 
         public static IEnumerable<Tag> GetAllTags(State state)
         {
-            var lastClosedTagIndex = state.start - 1;
-            for (var i = state.start; i <= state.end; i++)
-                if (StartsAt(state.OnSegment(i, state.end), out var tagType) &&
-                    HasClosedTag(state.OnSegment(i + 2, state.end), tagType, out var closedIndex))
+            var lastClosedTagIndex = state.Start - 1;
+            for (var i = state.Start; i <= state.End; i++)
+                if (StartsAt(state.OnSegment(i, state.End), out var tagType) &&
+                    HasClosedTag(state.OnSegment(i + 2, state.End), tagType, out var closedIndex))
                 {
                     if (i - lastClosedTagIndex > 1)
                         yield return new Tag(TagType.None, lastClosedTagIndex + 1, i - 1);
@@ -77,8 +76,8 @@ namespace Markdown
                     lastClosedTagIndex = closedIndex;
                     i = closedIndex;
                 }
-            if (state.end - lastClosedTagIndex > 0)
-                yield return new Tag(TagType.None, lastClosedTagIndex + 1, state.end);
+            if (state.End - lastClosedTagIndex > 0)
+                yield return new Tag(TagType.None, lastClosedTagIndex + 1, state.End);
         }
     }
 
