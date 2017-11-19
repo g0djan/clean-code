@@ -6,7 +6,7 @@ using NUnit.Framework;
 
 namespace Markdown
 {
-    public  class LexemeExtractor
+    public static class LexemeExtractor
     {
         private static bool StartsAt(int index, string text)
         {

@@ -1,207 +1,88 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 
 namespace Markdown
 {
-    public class TagExtractor
+    class TagExtractor : ITagExtractor
     {
-        private static bool StartsAt(State state, out TagType tagType)
+        public string MarkDown { get; }
+        public TagType Type { get; }
+
+        private static readonly Dictionary<TagType, string> toMarkDown = new Dictionary<TagType, string>
         {
-            if (IsThereNoTag(state))
-            {
-                tagType = TagType.None;
-                return false;
-            }
-            tagType = (TagType) (state.GetLexeme(state.Start).Content.Length - 1);
-            return true;
+            [TagType.Italic] = "_",
+            [TagType.Bold] = "__",
+            [TagType.BoldItalic] = "___"
+        };
+
+        public TagExtractor(TagType type)
+        {
+            MarkDown = toMarkDown[type];
+            Type = type;
         }
 
-        private static bool IsThereNoTag(State state)
+        public bool StartsAt(State state)
         {
-            const int maxUnderliningLength = 3;
-            const int minDistanceBtwOpenClose = 2;
-            var lexeme = state.GetLexeme(state.Start);
-            return lexeme.Content.Length > maxUnderliningLength ||
-                   lexeme.Type == LexemeType.Text ||
-                   state.IsInTag(TagType.Italic) ||
-                   state.IsInTag(TagType.BoldITalic) ||
-                   state.End - state.Start < minDistanceBtwOpenClose ||
-                   HasSpacesAfterOpenedTag(state) ||
-                   HasDigitAfterOpenedTag(state);
+            return state.GetLexeme(state.Start).Content == MarkDown &&
+                   UnderliningTagChecker.IsThereStartsOpenedTag(state) &&
+                   !IsInItalicTag(state);
         }
 
-        private static bool HasSpacesAfterOpenedTag(State state) =>
-            state.GetLexeme(state.Start + 1).Content[0] == ' ';
-
-        private static bool HasSpacesBeforeClosedTag(Lexeme lexeme) => lexeme.Content.Last() == ' ';
-
-        private static bool HasDigitAfterOpenedTag(State state) =>
-            char.IsDigit(state.GetLexeme(state.Start + 1).Content[0]);
-
-        private static bool HasDigitBeforeClosedTag(Lexeme lexeme) => char.IsDigit(lexeme.Content.Last());
-
-        private static bool HasClosedTag(State state, TagType openedType, out int closedIndex)
+        public bool HasClosed(State state, out int? index)
         {
-            for (var i = state.Start; i <= state.End; i++)
-                if (state.GetLexeme(i).Type == LexemeType.Underlining &&
-                    (TagType) (state.GetLexeme(i).Content.Length - 1) == openedType &&
-                    !HasSpacesBeforeClosedTag(state.GetLexeme(i - 1)) &&
-                    !HasDigitBeforeClosedTag(state.GetLexeme(i - 1)))
-                {
-                    closedIndex = i;
-                    return true;
-                }
-            closedIndex = -1;
-            return false;
+            var length = state.End - state.Start + 1;
+            index = Enumerable.Range(state.Start, length)
+                .Cast<int?>()
+                .FirstOrDefault(i => 
+                state.GetLexeme(i.Value).Content == MarkDown &&
+                UnderliningTagChecker.IsThereStartsClosedTag(state.ChangeSegment(i.Value, state.End)) &&
+                !IsInItalicTag(state.ChangeSegment(i.Value, state.End)));
+            return index != null;
         }
 
-        private static Tag ExtractTag(State state, TagType tagType)
-        {
-            return new Tag(tagType, state.Start + 1, state.End - 1);
-        }
+        public Tag ExtractTag(State state) => 
+            new Tag(Type, state.Start, state.End);
 
-        public static IEnumerable<Tag> GetAllTags(State state)
-        {
-            var lastClosedTagIndex = state.Start - 1;
-            for (var i = state.Start; i <= state.End; i++)
-                if (StartsAt(state.OnSegment(i, state.End), out var tagType) &&
-                    HasClosedTag(state.OnSegment(i + 2, state.End), tagType, out var closedIndex))
-                {
-                    if (i - lastClosedTagIndex > 1)
-                        yield return new Tag(TagType.None, lastClosedTagIndex + 1, i - 1);
-                    yield return ExtractTag(state.OnSegment(i, closedIndex), tagType);
-                    lastClosedTagIndex = closedIndex;
-                    i = closedIndex;
-                }
-            if (state.End - lastClosedTagIndex > 0)
-                yield return new Tag(TagType.None, lastClosedTagIndex + 1, state.End);
-        }
+        private bool IsInItalicTag(State state) => 
+            state.IsInTag(TagType.Italic) || state.IsInTag(TagType.BoldItalic);
     }
 
     [TestFixture]
-    public class TagsExtractor_Should
+    public class TagItalicExtractor_Should
     {
-        [Test]
-        public void OnlyNoneTag()
+        private TagExtractor tagItalicExtractor;
+
+        [SetUp]
+        public void SetUp()
         {
-            TagExtractor.GetAllTags(new State(new[] {new Lexeme(LexemeType.Text, "txt")}, 0, 0))
-                .Should().BeEquivalentTo(new Tag(TagType.None, 0, 0));
+            tagItalicExtractor = new TagExtractor(TagType.Italic);
         }
 
         [Test]
-        public void GetAllTags_OnlyItalic()
-        {
-            var lexemes = new[]
-            {
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "some text"),
-                new Lexeme(LexemeType.Underlining, "_")
-            };
-            TagExtractor.GetAllTags(new State(lexemes, 0, lexemes.Length - 1))
-                .Should().BeEquivalentTo(new Tag(TagType.Italic, 1, lexemes.Length - 2));
-        }
-
-        [Test]
-        public void GetAllTags_WithOverLengthUnderlinings()
-        {
-            var lexemes = new[]
-            {
-                new Lexeme(LexemeType.Text, "kekopen"),
-                new Lexeme(LexemeType.Underlining, "____"),
-                new Lexeme(LexemeType.Text, "kekclosed")
-            };
-            TagExtractor.GetAllTags(new State(lexemes, 0, lexemes.Length - 1))
-                .Should().BeEquivalentTo(new Tag(TagType.None, 0, lexemes.Length - 1));
-        }
-
-        [Test]
-        public void GetAllTags_ItalicWorkInBold()
+        public void NoItalicLexeme_DoesNotStartsAt()
         {
             var lexemes = new[]
             {
                 new Lexeme(LexemeType.Underlining, "__"),
-                new Lexeme(LexemeType.Text, "k"),
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "t"),
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "k"),
-                new Lexeme(LexemeType.Underlining, "__"),
+                new Lexeme(LexemeType.Text, "text"),
+                new Lexeme(LexemeType.Underlining, "__")
             };
-            var state = new State(lexemes, 1, lexemes.Length - 2, new BitArray(new[] {false, true, false, false}));
-            TagExtractor.GetAllTags(state)
-                .Should().BeEquivalentTo(new Tag(TagType.None, 1, 1),
-                    new Tag(TagType.Italic, 3, 3),
-                    new Tag(TagType.None, 5, 5));
+            tagItalicExtractor.StartsAt(new State(lexemes, 0, lexemes.Length - 1))
+                .Should().BeFalse();
         }
 
         [Test]
-        public void GetAllTags_BoldDoesNotWorkInItalic()
-        {
-            var lexemes = new[]
-            {
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "k"),
-                new Lexeme(LexemeType.Underlining, "__"),
-                new Lexeme(LexemeType.Text, "t"),
-                new Lexeme(LexemeType.Underlining, "__"),
-                new Lexeme(LexemeType.Text, "k"),
-                new Lexeme(LexemeType.Underlining, "_"),
-            };
-            var state = new State(lexemes, 1, lexemes.Length - 2, new BitArray(new[] {true, false, false, false}));
-            TagExtractor.GetAllTags(state)
-                .Should().BeEquivalentTo(new Tag(TagType.None, 1, lexemes.Length - 2));
-        }
-
-        [TestCase(' ', TestName = "When have space after")]
-        [TestCase('1', TestName = "When have digit after")]
-        public void OpenedTags_MustNotHaveForbidenCharAfter(char forbidenChar)
-        {
-            var lexemes = new[]
-            {
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, forbidenChar + "a"),
-                new Lexeme(LexemeType.Underlining, "_")
-            };
-            TagExtractor.GetAllTags(new State(lexemes, 0, lexemes.Length - 1))
-                .Should().BeEquivalentTo(new Tag(TagType.None, 0, lexemes.Length - 1));
-        }
-
-        [TestCase(' ', TestName = "When have space before")]
-        [TestCase('1', TestName = "When have digit before")]
-        public void ClosedTags_MustNotHaveForbidenCharBefore(char forbidenChar)
-        {
-            var lexemes = new[]
-            {
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "a" + forbidenChar),
-                new Lexeme(LexemeType.Underlining, "_")
-            };
-            TagExtractor.GetAllTags(new State(lexemes, 0, lexemes.Length - 1))
-                .Should().BeEquivalentTo(new Tag(TagType.None, 0, lexemes.Length - 1));
-        }
-
-        [Test]
-        public void TripleUnderlining_IsBoldItalicTag()
+        public void DoesNotStartsAt_InItalic()
         {
             var lexemes = new[]
             {
                 new Lexeme(LexemeType.Underlining, "___"),
-                new Lexeme(LexemeType.Text, "text"),
-                new Lexeme(LexemeType.Underlining, "___")
-            };
-            TagExtractor.GetAllTags(new State(lexemes, 0, lexemes.Length - 1))
-                .Should().BeEquivalentTo(new Tag(TagType.BoldITalic, 1, lexemes.Length - 2));
-        }
-
-        [Test]
-        public void PassEmbeededTags()
-        {
-            var lexemes = new[]
-            {
-                new Lexeme(LexemeType.Underlining, "__"),
                 new Lexeme(LexemeType.Text, "a"),
                 new Lexeme(LexemeType.Underlining, "_"),
                 new Lexeme(LexemeType.Text, "a"),
@@ -209,27 +90,37 @@ namespace Markdown
                 new Lexeme(LexemeType.Text, "a"),
                 new Lexeme(LexemeType.Underlining, "__")
             };
-            TagExtractor.GetAllTags(new State(lexemes, 0, lexemes.Length - 1))
-                .Should().BeEquivalentTo(new Tag(TagType.Bold, 1, lexemes.Length - 2));
+            var mask = new BitArray(new[] {false, false, true, false});
+            tagItalicExtractor.StartsAt(new State(lexemes, 1, lexemes.Length - 2, mask))
+                .Should().BeFalse();
         }
 
         [Test]
-        public void SeveralTags()
+        public void NoPairedTag_HasNotClosed()
         {
             var lexemes = new[]
             {
                 new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "text"),
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "text"),
-                new Lexeme(LexemeType.Underlining, "_"),
-                new Lexeme(LexemeType.Text, "text"),
-                new Lexeme(LexemeType.Underlining, "_"),
+                new Lexeme(LexemeType.Text, "a"),
+                new Lexeme(LexemeType.Underlining, "__")
             };
-            TagExtractor.GetAllTags(new State(lexemes, 0, lexemes.Length - 1))
-                .Should().BeEquivalentTo(new Tag(TagType.Italic, 1, 1),
-                    new Tag(TagType.None, 3, 3),
-                    new Tag(TagType.Italic, 5, 5));
+            tagItalicExtractor.HasClosed(new State(lexemes, 2, 2), out var index)
+                .Should().BeFalse();
+        }
+
+        [Test]
+        public void ReturnFirstClosedIndex()
+        {
+            var lexemes = new[]
+            {
+                new Lexeme(LexemeType.Underlining, "_"),
+                new Lexeme(LexemeType.Text, "a"),
+                new Lexeme(LexemeType.Underlining, "_"),
+                new Lexeme(LexemeType.Text, "a"),
+                new Lexeme(LexemeType.Underlining, "_")
+            };
+            tagItalicExtractor.HasClosed(new State(lexemes, 2, 4), out var index);
+            index.Should().Be(2);
         }
     }
 }

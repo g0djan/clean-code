@@ -8,39 +8,40 @@ namespace Markdown
 {
     public class SyntaxTreeNode
     {
-        private readonly List<SyntaxTreeNode> childs;
+        private readonly List<SyntaxTreeNode> children;
         public TagType TagType { get; }
-        public string LeafContent { get; private set; }
+        public string LeafContent { get; }
 
-        public SyntaxTreeNode(TagType tagType)
+        public SyntaxTreeNode(TagType tagType, string content)
         {
             TagType = tagType;
-            childs = new List<SyntaxTreeNode>();
+            LeafContent = content;
+            children = new List<SyntaxTreeNode>();
         }
 
         public void BuildSyntaxTree(State state)
         {
-            foreach (var tag in TagExtractor.GetAllTags(state))
+            foreach (var tag in Extractor.GetAllTags(state))
             {
-                childs.Add(new SyntaxTreeNode(tag.Type));
+                var content = tag.Type == TagType.None
+                    ? AccumulateLeafContent(state.ChangeSegment(tag.Start, tag.End))
+                    : null;
+                children.Add(new SyntaxTreeNode(tag.Type, content));
                 if (tag.Type == TagType.None)
-                {
-                    childs.Last().AccumulateLeafContent(state.OnSegment(tag.Start, tag.End));
                     continue;
-                }
                 var inTagState = state
-                    .OnSegment(tag.Start, tag.End)
+                    .ChangeSegment(tag.Start, tag.End)
                     .SwitchTag(tag.Type);
-                childs.Last().BuildSyntaxTree(inTagState);
+                children.Last().BuildSyntaxTree(inTagState);
             }
         }
 
-        public IEnumerable<SyntaxTreeNode> GetAllChilds() => childs;
+        public IEnumerable<SyntaxTreeNode> GetAllChildren() => children;
 
-        private void AccumulateLeafContent(State state)
+        private string AccumulateLeafContent(State state)
         {
             var length = state.End - state.Start + 1;
-            LeafContent = string
+            return string
                 .Join("", Enumerable
                 .Range(state.Start, length)
                 .Select(i => state.GetLexeme(i).Content));
@@ -53,11 +54,11 @@ namespace Markdown
         [Test]
         public void OnlyRoot()
         {
-            var root = new SyntaxTreeNode(TagType.None);
+            var root = new SyntaxTreeNode(TagType.None, null);
             var lexemes = new[] {new Lexeme(LexemeType.Text, "content")};
 
             root.BuildSyntaxTree(new State(lexemes, 0, lexemes.Length - 1));
-            var childs = root.GetAllChilds().ToArray();
+            var childs = root.GetAllChildren().ToArray();
             childs.Length.Should().Be(1);
             childs[0].LeafContent.Should().Be("content");
         }
@@ -65,7 +66,7 @@ namespace Markdown
 
         private SyntaxTreeNode GetTreeBasedOn2Tags(string firstMdTag, string secondMdTag)
         {
-            var root = new SyntaxTreeNode(TagType.None);
+            var root = new SyntaxTreeNode(TagType.None, null);
             var lexemes = new[]
             {
                 new Lexeme(LexemeType.Text, "a"),
@@ -86,8 +87,8 @@ namespace Markdown
         public void ItalicInBold_FirstLevelContainsBoldBetweenText()
         {
             var root = GetTreeBasedOn2Tags("__", "_");
-            var childs = root.GetAllChilds();
-            childs.Select(child => child.TagType).Should()
+            var children = root.GetAllChildren();
+            children.Select(child => child.TagType).Should()
                 .BeEquivalentTo(new[] {TagType.None, TagType.Bold, TagType.None});
         }
 
@@ -95,8 +96,8 @@ namespace Markdown
         public void ItalicInBold_SecondLevelContainsItalicInText()
         {
             var root = GetTreeBasedOn2Tags("__", "_");
-            var childsOfBold = root.GetAllChilds().ToArray()[1].GetAllChilds();
-            childsOfBold.Select(child => child.TagType).Should()
+            var childrenOfBold = root.GetAllChildren().ToArray()[1].GetAllChildren();
+            childrenOfBold.Select(child => child.TagType).Should()
                 .BeEquivalentTo(new[] { TagType.None, TagType.Italic, TagType.None });
         }
 
@@ -104,7 +105,7 @@ namespace Markdown
         public void SeveralItalicTags()
         {
             var root = GetTreeBasedOn2Tags("_", "_");
-            root.GetAllChilds().Select(child => child.TagType).Should()
+            root.GetAllChildren().Select(child => child.TagType).Should()
                 .BeEquivalentTo(new[] {TagType.None, TagType.Italic, TagType.None, TagType.Italic, TagType.None });
         }
     }

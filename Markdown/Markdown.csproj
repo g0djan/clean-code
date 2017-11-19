@@ -52,6 +52,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ITagExtractor.cs" />
     <Compile Include="Lexeme.cs" />
     <Compile Include="LexemeExtractor.cs" />
     <Compile Include="LexemeType.cs" />
@@ -60,9 +61,11 @@
     <Compile Include="State.cs" />
     <Compile Include="SyntaxTreeNode.cs" />
     <Compile Include="Tag.cs" />
-    <Compile Include="TagRenderer.cs" />
     <Compile Include="TagExtractor.cs" />
+    <Compile Include="TagRenderer.cs" />
+    <Compile Include="Extractor.cs" />
     <Compile Include="TagType.cs" />
+    <Compile Include="UnderliningTagChecker.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

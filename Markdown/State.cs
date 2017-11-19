@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections;
-using System.Collections.Generic;
 using FluentAssertions;
 using NUnit.Framework;
-using NUnit.Framework.Internal;
 
 namespace Markdown
 {
@@ -46,7 +44,7 @@ namespace Markdown
             return new State(Lexemes, Start, End, newMask);
         }
 
-        public State OnSegment(int start, int end) => new State(Lexemes, start, end, new BitArray(Mask));
+        public State ChangeSegment(int start, int end) => new State(Lexemes, start, end, new BitArray(Mask));
     }
 
     [TestFixture]
@@ -69,7 +67,7 @@ namespace Markdown
         public void SwitchTag_ChangeBoldItalic()
         {
             var state = new State(new Lexeme[1], 0, 0);
-            state.SwitchTag(TagType.BoldITalic).IsInTag(TagType.BoldITalic).Should().BeTrue();
+            state.SwitchTag(TagType.BoldItalic).IsInTag(TagType.BoldItalic).Should().BeTrue();
         }
     }
 }

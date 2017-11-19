@@ -13,7 +13,7 @@ namespace Markdown
 
 	    public Md()
 	    {
-	        root = new SyntaxTreeNode(TagType.None);
+	        root = new SyntaxTreeNode(TagType.None, null);
 	    }
 
         public string RenderToHtml(string markdown)
