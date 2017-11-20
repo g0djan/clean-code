@@ -1,8 +1,4 @@
 ﻿using NUnit.Framework;
-using System.Diagnostics.Contracts;
-using System.Linq;
-using System.Net.Http.Headers;
-using FluentAssertions;
 
 
 namespace Markdown

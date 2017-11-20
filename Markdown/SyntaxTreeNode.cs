@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
@@ -21,7 +20,7 @@ namespace Markdown
 
         public void BuildSyntaxTree(State state)
         {
-            foreach (var tag in Extractor.GetAllTags(state))
+            foreach (var tag in Extractor.GetAllTags(state.ChangeTagType(TagType)))
             {
                 var content = tag.Type == TagType.None
                     ? AccumulateLeafContent(state.ChangeSegment(tag.Start, tag.End))
@@ -31,7 +30,7 @@ namespace Markdown
                     continue;
                 var inTagState = state
                     .ChangeSegment(tag.Start, tag.End)
-                    .SwitchTag(tag.Type);
+                    .ChangeTagType(tag.Type);
                 children.Last().BuildSyntaxTree(inTagState);
             }
         }

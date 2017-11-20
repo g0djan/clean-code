@@ -4,15 +4,15 @@ using NUnit.Framework;
 
 namespace Markdown
 {
-    static class UnderliningTagChecker
+    public static class StateExtensions
     {
         private const int MinTagsCountBtwOpenAndCloseTags = 2;
 
-        public static bool IsThereStartsOpenedTag(State state) => 
+        public static bool IsThereStartsOpenedTag(this State state) => 
             state.End - state.Start >= MinTagsCountBtwOpenAndCloseTags && 
             !(HasSpacesAfterOpenedTag(state) || HasDigitAfterOpenedTag(state));
 
-        public static bool IsThereStartsClosedTag(State state) =>
+        public static bool IsThereStartsClosedTag(this State state) =>
             !(HasSpacesBeforeClosedTag(state) || HasDigitBeforeClosedTag(state));
 
         private static bool HasSpacesAfterOpenedTag(State state) => 
@@ -29,7 +29,7 @@ namespace Markdown
     }
 
     [TestFixture]
-    public class UnderliningTagChecker_Should
+    public class StateExtensions_Should
     {
         [TestCase(' ', TestName = "Space")]
         [TestCase('1', TestName = "Digit")]
@@ -40,8 +40,8 @@ namespace Markdown
                 new Lexeme(LexemeType.Underlining, "_"),
                 new Lexeme(LexemeType.Text, symbol + "text")
             };
-            UnderliningTagChecker
-                .IsThereStartsOpenedTag(new State(lexemes, 0, lexemes.Length - 1))
+            new State(lexemes, 0, lexemes.Length - 1)
+                .IsThereStartsOpenedTag()
                 .Should().BeFalse();
         }
 
@@ -54,16 +54,16 @@ namespace Markdown
                 new Lexeme(LexemeType.Text, "text" + symbol),
                 new Lexeme(LexemeType.Underlining, "_")
             };
-            UnderliningTagChecker
-                .IsThereStartsClosedTag(new State(lexemes, 1, lexemes.Length - 1))
+            new State(lexemes, 1, lexemes.Length - 1)
+                .IsThereStartsClosedTag()
                 .Should().BeFalse();
         }
 
         [Test]
         public void SoClose_StartAndEndInState()
         {
-            UnderliningTagChecker
-                .IsThereStartsOpenedTag(new State(new Lexeme[2], 0, 1))
+            new State(new Lexeme[2], 0, 1)
+                .IsThereStartsOpenedTag()
                 .Should().BeFalse();
         }
     }

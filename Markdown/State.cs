@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -10,17 +9,19 @@ namespace Markdown
         private Lexeme[] Lexemes { get; }
         public int Start { get; }
         public int End { get; }
-        private BitArray Mask { get; }
 
-        public State(Lexeme[] lexemes, int start, int end, BitArray mask)
+        public TagType TagType { get; }
+
+        public State(Lexeme[] lexemes, int start, int end, TagType type)
         {
             if (start > end)
                 throw new ArgumentException();
             Lexemes = lexemes;
             Start = start;
             End = end;
-            Mask = mask;
+            TagType = type;
         }
+
         public State(Lexeme[] lexemes, int start, int end)
         {
             if (start > end)
@@ -28,23 +29,16 @@ namespace Markdown
             Lexemes = lexemes;
             Start = start;
             End = end;
-            Mask = new BitArray(4);
+            TagType = TagType.None;
         }
 
         public Lexeme GetLexeme(int index) => Lexemes[index];
 
-        public bool IsInTag(TagType type)
-        {
-            return Mask[(int) type];
-        }
+        public State ChangeTagType(TagType type) =>
+            new State(Lexemes, Start, End, type);
 
-        public State SwitchTag(TagType type)
-        {
-            var newMask = new BitArray(Mask){ [(int) type] = !Mask[(int) type]};
-            return new State(Lexemes, Start, End, newMask);
-        }
-
-        public State ChangeSegment(int start, int end) => new State(Lexemes, start, end, new BitArray(Mask));
+        public State ChangeSegment(int start, int end) =>
+            new State(Lexemes, start, end, TagType);
     }
 
     [TestFixture]
@@ -53,21 +47,22 @@ namespace Markdown
         [Test]
         public void StartCanNotToBeGreaterThanEnd()
         {
-            Assert.Throws<ArgumentException>(() => new State(new Lexeme[1],1, 0, new BitArray(1)));
+            Assert.Throws<ArgumentException>(() => new State(new Lexeme[1], 1, 0));
         }
-        
+
         [Test]
         public void TestIsInTag()
         {
-            var state = new State(new Lexeme[1], 0, 0, new BitArray(new[] { false, true , false, false}));
-            (state.IsInTag(TagType.Bold) && !state.IsInTag(TagType.Italic)).Should().BeTrue();
+            var state = new State(new Lexeme[1], 0, 0,
+                TagType.Bold);
+            (state.TagType == TagType.Bold && state.TagType != TagType.Italic).Should().BeTrue();
         }
 
         [Test]
         public void SwitchTag_ChangeBoldItalic()
         {
             var state = new State(new Lexeme[1], 0, 0);
-            state.SwitchTag(TagType.BoldItalic).IsInTag(TagType.BoldItalic).Should().BeTrue();
+            (state.ChangeTagType(TagType.BoldItalic).TagType == TagType.BoldItalic).Should().BeTrue();
         }
     }
 }

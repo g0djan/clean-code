@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -21,17 +19,22 @@ namespace Markdown
                     if (extractor.StartsAt(state.ChangeSegment(i, state.End)) &&
                         extractor.HasClosed(state.ChangeSegment(i + 2, state.End), out var closedIndex))
                     {
-                        if (i - lastClosedTagIndex > 1)
-                            yield return new Tag(TagType.None, lastClosedTagIndex + 1, i - 1);
-                        yield return extractor.ExtractTag(state.ChangeSegment(i + 1, closedIndex.Value - 1));
-                        lastClosedTagIndex = closedIndex.Value;
-                        i = closedIndex.Value;
+                        if (!NoneTagIsEmpty(lastClosedTagIndex, i))
+                            yield return GetLastNoneTag(i, lastClosedTagIndex);
+                        yield return extractor.ExtractTag(state.ChangeSegment(i + 1, closedIndex - 1));
+                        lastClosedTagIndex = closedIndex;
+                        i = closedIndex;
                     }
                 }
             }
             if (state.End - lastClosedTagIndex > 0)
                 yield return new Tag(TagType.None, lastClosedTagIndex + 1, state.End);
         }
+
+        private static Tag GetLastNoneTag(int i, int lastClosedTagIndex) => 
+            new Tag(TagType.None, lastClosedTagIndex + 1, i - 1);
+
+        private static bool NoneTagIsEmpty(int start, int end) => end - start > 1;
     }
 
     [TestFixture]
@@ -83,7 +86,7 @@ namespace Markdown
                 new Lexeme(LexemeType.Text, "k"),
                 new Lexeme(LexemeType.Underlining, "__"),
             };
-            var state = new State(lexemes, 1, lexemes.Length - 2, new BitArray(new[] {false, true, false, false}));
+            var state = new State(lexemes, 1, lexemes.Length - 2, TagType.Bold);
             Extractor.GetAllTags(state)
                 .Should().BeEquivalentTo(new Tag(TagType.None, 1, 1),
                     new Tag(TagType.Italic, 3, 3),
@@ -103,7 +106,7 @@ namespace Markdown
                 new Lexeme(LexemeType.Text, "k"),
                 new Lexeme(LexemeType.Underlining, "_"),
             };
-            var state = new State(lexemes, 1, lexemes.Length - 2, new BitArray(new[] {true, false, false, false}));
+            var state = new State(lexemes, 1, lexemes.Length - 2, TagType.Italic);
             Extractor.GetAllTags(state)
                 .Should().BeEquivalentTo(new Tag(TagType.None, 1, lexemes.Length - 2));
         }

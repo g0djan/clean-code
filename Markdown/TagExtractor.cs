@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using FluentAssertions;
 using NUnit.Framework;
 
@@ -30,27 +26,31 @@ namespace Markdown
         public bool StartsAt(State state)
         {
             return state.GetLexeme(state.Start).Content == MarkDown &&
-                   UnderliningTagChecker.IsThereStartsOpenedTag(state) &&
+                   state.IsThereStartsOpenedTag() &&
                    !IsInItalicTag(state);
         }
 
-        public bool HasClosed(State state, out int? index)
+        public bool HasClosed(State state, out int index)
         {
             var length = state.End - state.Start + 1;
-            index = Enumerable.Range(state.Start, length)
-                .Cast<int?>()
-                .FirstOrDefault(i => 
-                state.GetLexeme(i.Value).Content == MarkDown &&
-                UnderliningTagChecker.IsThereStartsClosedTag(state.ChangeSegment(i.Value, state.End)) &&
-                !IsInItalicTag(state.ChangeSegment(i.Value, state.End)));
-            return index != null;
+            var closedIndex = -1;
+            if (Enumerable.Range(state.Start, length)
+                .Any(i => state.GetLexeme(closedIndex = i).Content == MarkDown &&
+                          state.ChangeSegment(i, state.End).IsThereStartsClosedTag() &&
+                          !IsInItalicTag(state.ChangeSegment(i, state.End))))
+            {
+                index = closedIndex;
+                return true;
+            }
+            index = -1;
+            return false;
         }
 
         public Tag ExtractTag(State state) => 
             new Tag(Type, state.Start, state.End);
 
         private bool IsInItalicTag(State state) => 
-            state.IsInTag(TagType.Italic) || state.IsInTag(TagType.BoldItalic);
+            state.TagType == TagType.Italic || state.TagType == TagType.BoldItalic;
     }
 
     [TestFixture]
@@ -90,8 +90,7 @@ namespace Markdown
                 new Lexeme(LexemeType.Text, "a"),
                 new Lexeme(LexemeType.Underlining, "__")
             };
-            var mask = new BitArray(new[] {false, false, true, false});
-            tagItalicExtractor.StartsAt(new State(lexemes, 1, lexemes.Length - 2, mask))
+            tagItalicExtractor.StartsAt(new State(lexemes, 1, lexemes.Length - 2, TagType.BoldItalic))
                 .Should().BeFalse();
         }
 

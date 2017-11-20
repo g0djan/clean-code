@@ -65,7 +65,7 @@
     <Compile Include="TagRenderer.cs" />
     <Compile Include="Extractor.cs" />
     <Compile Include="TagType.cs" />
-    <Compile Include="UnderliningTagChecker.cs" />
+    <Compile Include="StateExtensions.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
